@@ -38,6 +38,8 @@ Udagram is an application to post and share images, users should have account to
 
 - User need to sign-up as new user or sign-in if alrady have account:
 
+[Click Here](http://myawsbucket-318346368820.s3-website-us-east-1.amazonaws.com)
+
 ![home page](assets/screenshot/home_page.png)
 
 ### Sign-in Form
