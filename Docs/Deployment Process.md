@@ -1,0 +1,80 @@
+# Deployment Steps:
+
+To deploy the Udagram, We need to generate 3 things (RDS , EB , S3 Bucket):
+
+## 1st: RDS:
+
+1. Create RDS using AWS (it named `udagram-db`).
+   ![rds](/assets/screenshot/RDS_database.png)
+2. Edit the security group's inbound rule to allow incoming connections from anywhere.
+3. Check Connection To make sure the RDS is connected using the follwing command:
+
+   ```bash
+        psql -h udagram-db.cj5bw6vgibut.us-east-1.rds.amazonaws.com -U Ali postgres
+   ```
+   ![checking connection](/assets/screenshot/checking_connection_after_deploying.png)
+
+4. Create .env file and add the required enviroment variables in config > config.ts file & edit the POSTGRES_HOST to store the link of the newly created RDS.
+
+   ![.env file](/assets/screenshot/environment_variable.png ".env")
+
+5. Build and Run the application to lunch migrations and create tables in RDS, the result of ` npm run start ` would be the follwing image:
+
+   ![migration](/assets/screenshot/udagram-api_migration.png)
+
+## 2nd: S3 Bucket:
+
+1. Create empty bucket using CLI or S3 Console (I named it `myawsbucket-318346368820`).
+2. Edit the properties of the bucket to:
+   - allow static web hosting.
+   - add CORS.
+   - add ploicy.
+3. Add the newly created bucket `AWS_BUCKET=myawsbucket-318346368820` to the .env file in the udagram-api.
+
+   ![.env file](/assets/screenshot/environment_variable.png ".env")
+
+4. Edit deploy.sh to add the name of the bucket:
+
+   ![.env file](/assets/screenshot/udagram-frontend_deploy_sh.png ".env")
+
+## 3rd: EB:
+
+1. Create eb app and enviroment using the CLI or EB Console (my eb app name is `udagram-api` & eb environment is `deployment-process-udagram-api-dev`).
+2. cd to where the pem file is located and then setup ssh file to EC instance that is created in first step.
+3. Automate enviroment variables to be pushed from the CircleCi to the newly created (eb app), by adding the following script to the udagram-api/bin/deploy.sh:
+
+   `eb setenv AWS_ACCESS_KEY_ID=AWS_ACCESS_KEY_ID AWS_BUCKET=AWS_BUCKET AWS_DEFAULT_REGION=AWS_DEFAULT_REGION AWS_PROFILE=AWS_PROFILE AWS_REGION=AWS_REGION AWS_SECRET_ACCESS_KEY=AWS_SECRET_ACCESS_KEY JWT_SECRET=JWT_SECRET POSTGRES_DB=POSTGRES_DB POSTGRES_DB=POSTGRES_HOST POSTGRES_PASSWORD=POSTGRES_PASSWORD POSTGRES_USERNAME=POSTGRES_USERNAME URL=URL`
+
+   then, call this deploy.sh in the udagram-api/package.json
+
+   ```json
+   "deploy": "npm run build && eb list && eb use deployment-process-udagram-api-dev && chmod +x bin/deploy.sh && eb deploy"
+   ```
+
+   ![eb after deploy](/assets/screenshot/udagram-api_deploy.png)
+
+   **Note:** the environment variables in deploy.sh should match the environment variables in CircleCi pipeline
+
+4. Link the newly created EB with udagram-api > enviroment.ts & enviroment.prod.ts:
+
+   ![ eb url in env and env.prod file](/assets/screenshot/environment_prod.png "eb url in env and env.prod file")
+
+5. Run `eb deploy` to deploy the backend **udagram-api**.
+
+## Configuring CircleCi:
+
+1. Add the required scripts (TODO) in circleci > config.yml , like the following:
+
+   ![config.yml](/assets/screenshot/confic_yaml.png "config.yml")
+
+2. Initilaize gitgub repository to push the project.
+3. Connect CircleCi to the github repo of forked the udagram project.
+4. Add enviroment variables to CircleCi like the following:
+
+   ![environment variables in circle ci](/assets/screenshot/pipline_environment_var.png "environment variables in circle ci")
+
+### Result:
+
+1. S3 Bucket should be filled with the udagram-frontend www files, once **CircleCi finish deploying**.
+2. Another S3 Bucket (automatically generated and filled) once the deployment of the udagram-api is finished (in my case it named `elasticbeanstalk-us-east-1-318346368820`).
+3. EC2 Incstance is automatically created once **eb env** is created (in my case it named `deployment-process-udagram-api-dev`).
